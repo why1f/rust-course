@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main # 只有当你推送到 main 分支时才触发部署
+  workflow_dispatch:
 
 defaults:
   run:
