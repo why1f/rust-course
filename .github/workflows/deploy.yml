@@ -1,46 +1,43 @@
-name: Deploy
+name: Deploy my fork
 
 on:
   push:
     branches:
-      - main
-
-  pull_request:
-    branches:
-      - main
+      - main # 只有当你推送到 main 分支时才触发部署
 
 defaults:
   run:
     shell: bash
 
 permissions:
-  contents: write
+  contents: write # 必须要有写入权限，才能推送到 gh-pages 分支
 
 jobs:
   deploy:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ubuntu-latest # 砍掉矩阵构建，只用一个 Linux 环境，最快最稳定
     steps:
       - uses: actions/checkout@v4
-      - name: Install Rust
-        run: |
-          rustup set profile minimal
-          rustup toolchain install stable
-          rustup default stable
+      
+      # 1. 安装 mdBook (砍掉了 Rust 的安装，因为 actions-mdbook 自带了预编译版本，速度更快)
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: "latest"
+          
+      # 2. 编译书籍
       - run: mdbook build
-      - name: Copy Assets
+      
+      # 3. 拷贝资源（排雷关键步！）
+      - name: Copy Assets Safely
         run: |
           chmod +x ci/copy-assets.sh
-          ci/copy-assets.sh ${{ matrix.os }}
-      - name: Deploy
+          ci/copy-assets.sh ubuntu-latest
+          # 【极其重要】：强制删除 CNAME 文件，防止自定义域名冲突导致你的网页挂掉！
+          rm -f book/CNAME
+          
+      # 4. 自动部署到 gh-pages 分支
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.ref == 'refs/heads/main' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./book
